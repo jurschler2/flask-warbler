@@ -52,6 +52,35 @@ def do_logout():
     if CURR_USER_KEY in session:
         del session[CURR_USER_KEY]
 
+##############################################################################
+# helper functions. Move into other py file.
+
+
+def unique_username(user, username):
+    """Checks username against current user username. If username is not current user's username and is unique when compared against all existing usernames, return true. If current user's username or already taken return false."""
+    current_username = user.username
+
+    if username != current_username:
+        username_exists = User.query.filter(User.username == username).all()
+        if username_exists:
+            return False
+
+    return True
+
+
+def unique_email(user, email):
+    """Checks email against current user email. If email is not current user's email and is unique when compared against all existing emails, return true. If current user's email or already taken return false."""
+    current_email = user.email
+
+    if email != current_email:
+        email_exists = User.query.filter(User.email == email).all()
+        if email_exists:
+            return False
+
+    return True
+
+
+##############################################################################
 
 @app.route('/signup', methods=["GET", "POST"])
 def signup():
@@ -214,42 +243,44 @@ def stop_following(follow_id):
 def profile():
     """Update profile for current user."""
 
-    # Lunch breakpoint - how to edit the user
-
     if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    else:
+    form = UserEditForm(obj=g.user)
 
-        form = UserEditForm(obj=g.user)
+    if form.validate_on_submit():
 
-        if form.validate_on_submit():
-            username = form.username.data
-            bio = form.bio.data
-            email = form.email.data
-            image_url = form.image_url.data or User.image_url.default.arg
-            header_image_url = (form.header_image_url.data or
-                                User.header_image_url.default.arg)
-            password = form.password.data
+        username = form.username.data
+        bio = form.bio.data
+        email = form.email.data
+        image_url = form.image_url.data or User.image_url.default.arg
+        header_image_url = (form.header_image_url.data or
+                            User.header_image_url.default.arg)
+        password = form.password.data
 
-            if g.user.authenticate(g.user.username, password):
+        if g.user.authenticate(g.user.username, password):
+            # only update username if unique and not current username
+            if (unique_username(g.user, username)
+               and g.user.username != username):
                 g.user.username = username
-                g.user.bio = bio
+
+            # only update email if unique and not current username
+            if unique_email(g.user, email) and g.user.email != email:
                 g.user.email = email
-                g.user.image_url = image_url
-                g.user.header_image_url = header_image_url
-                db.session.commit()
 
-                return redirect(f'/users/{g.user.id}')
+            g.user.bio = bio
+            g.user.image_url = image_url
+            g.user.header_image_url = header_image_url
+            db.session.commit()
 
-            else:
-                flash("Your password is invalid", "danger")
-                return render_template("/users/edit.html", form=form)
+            return redirect(f'/users/{g.user.id}')
 
         else:
-            flash("You entered an existing username or email", "danger")
+            flash("Your password is invalid", "danger")
             return render_template("/users/edit.html", form=form)
+
+    return render_template('/users/edit.html', form=form)
 
 
 @app.route('/users/delete', methods=["POST"])
@@ -330,8 +361,12 @@ def homepage():
     """
 
     if g.user:
+        following = [f.id for f in g.user.following] + [g.user.id]
+        # following.append(g.user.id)
+
         messages = (Message
                     .query
+                    .filter(Message.user_id.in_(following))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
