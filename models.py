@@ -26,11 +26,15 @@ class Follows(db.Model):
         primary_key=True,
     )
 
+    def __repr__(self):
+
+        return f"<Follows {self.user_being_followed_id}, {self.user_following_id}>"
+
 
 class Likes(db.Model):
     """Mapping user likes to warbles."""
 
-    __tablename__ = 'likes' 
+    __tablename__ = 'likes'
 
     id = db.Column(
         db.Integer,
@@ -46,6 +50,10 @@ class Likes(db.Model):
         db.Integer,
         db.ForeignKey('messages.id', ondelete='cascade')
     )
+
+    def __repr__(self):
+
+        return f"<Likes {self.id}, {self.user_id}, {self.message_id}>"
 
 
 class User(db.Model):
@@ -197,6 +205,9 @@ class Message(db.Model):
     )
 
     user = db.relationship('User')
+
+    def __repr__(self):
+        return f"<Message #{self.id}: {self.text}, {self.timestamp}, {self.user_id}>"
 
 
 def connect_db(app):
