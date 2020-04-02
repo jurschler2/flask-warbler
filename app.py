@@ -209,6 +209,19 @@ def users_followers(user_id):
     return render_template('users/followers.html', user=user)
 
 
+@app.route('/users/<int:user_id>/likes')
+def users_likes(user_id):
+    """Show list of likes of this user."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    user = User.query.get_or_404(user_id)
+    likes = user.likes
+    return render_template('users/likes.html', user=user, likes=likes)
+
+
 @app.route('/users/follow/<int:follow_id>', methods=['POST'])
 def add_follow(follow_id):
     """Add a follow for the currently-logged-in user."""
@@ -347,6 +360,30 @@ def messages_destroy(message_id):
 
     return redirect(f"/users/{g.user.id}")
 
+
+@app.route('/messages/<int:message_id>/like', methods=["POST"])
+def messages_like(message_id):
+    """Like or unlike a message."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    message = Message.query.get(message_id)
+    messages_list = [l.id for l in g.user.likes]
+
+    if message.user_id == g.user.id:
+        return redirect(request.referrer)
+
+    if message.id not in messages_list:
+        g.user.likes.append(message)
+        db.session.commit()
+
+    else:
+        g.user.likes.remove(message)
+        db.session.commit()
+
+    return redirect(request.referrer)
 
 ##############################################################################
 # Homepage and error pages
