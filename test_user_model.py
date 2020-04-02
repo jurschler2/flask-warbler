@@ -7,7 +7,7 @@
 
 import os
 from unittest import TestCase
-
+from sqlalchemy import exc
 from models import db, User, Message, Follows
 
 # BEFORE we import our app, let's set an environmental variable
@@ -32,20 +32,25 @@ db.create_all()
 USER_DATA = {
     "username":  "test1",
     "email": "test1@test.com",
-    "password": "password"
+    "password": "password",
+    "image_url": ""
+
 }
 
 USER_DATA_2 = {
     "username":  "test2",
     "email": "test2@test.com",
-    "password": "password"
+    "password": "password",
+    "image_url": ""
 }
 
 USER_DATA_3 = {
     "username":  "test3",
     "email": "test3@test.com",
-    "password": "password"
+    "password": "password",
+    "image_url": ""
 }
+
 
 class UserModelTestCase(TestCase):
     """Test views for messages."""
@@ -63,6 +68,11 @@ class UserModelTestCase(TestCase):
 
         self.testUser1 = testUser1
         self.client = app.test_client()
+
+    def tearDown(self):
+        res = super().tearDown()
+        db.session.rollback()
+        return res
 
     def test_user_model(self):
         """Does basic model work?"""
@@ -110,11 +120,48 @@ class UserModelTestCase(TestCase):
         self.assertNotEqual(self.testUser1.following[0].id, testUser3.id)
         self.assertNotEqual(testUser2.followers[0].id, testUser3.id)
 
+    def test_user_create_happy(self):
+        """ Tests the class method create on User """
+
+        testUserTrue = User.signup(**USER_DATA_2)
+        self.assertIsInstance(testUserTrue, User)
+
+    def test_invalid_username_signup(self):
+        User.signup(None, "test@test.com", "password", None)
+        self.assertRaises(exc.IntegrityError, db.session.commit)
+
+    def test_invalid_email_signup(self):
+        User.signup("testtest", None, "password", None)
+        self.assertRaises(exc.IntegrityError, db.session.commit)
+
+    def test_invalid_password_signup(self):
+        with self.assertRaises(ValueError) as context:
+            User.signup("testtest", "email@email.com", "", None)
+
+        with self.assertRaises(ValueError) as context:
+            User.signup("testtest", "email@email.com", None, None)
+
+    def test_user_authenticate(self):
+        """ Tests the class method authenticate on User """
+
+        testUserTrue = User.signup(**USER_DATA_2)
+        db.session.commit()
+        goodUsername = testUserTrue.username
+        badUsername = "badUsername"
+        goodPassword = "password"
+        badPassword = "badpassword"
+        userAuthenticated = User.authenticate(goodUsername,
+                                              goodPassword)
+        usernameNotAuthenticated = User.authenticate(badUsername,
+                                                     goodPassword)
+        passwordNotAuthenticated = User.authenticate(goodUsername,
+                                                     badPassword)
+        self.assertIsInstance(testUserTrue, User)
+        self.assertTrue(userAuthenticated)
+        self.assertFalse(usernameNotAuthenticated)
+        self.assertFalse(passwordNotAuthenticated)
+
 
 # Here are some questions your tests should answer for the User model:
 
-# Does User.create successfully create a new user given valid credentials?
 # Does User.create fail to create a new user if any of the validations (e.g. uniqueness, non-nullable fields) fail?
-# Does User.authenticate successfully return a user when given a valid username and password?
-# Does User.authenticate fail to return a user when the username is invalid?
-# Does User.authenticate fail to return a user when the password is invalid?
