@@ -15,7 +15,8 @@ app = Flask(__name__)
 # Get DB_URI from environ variable (useful for production/testing) or,
 # if not set there, use development local db.
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    os.environ.get('DATABASE_URL', 'postgres:///warbler'))
+    os.environ.get('DATABASE_URL',
+                   'postgres://tuwowszqmpauml:874353c7c11c8e69c42d32d75898a209ad0835502a3cf383db77287929272db2@ec2-18-233-137-77.compute-1.amazonaws.com:5432/d5c7q6lnnveb5h'))
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
