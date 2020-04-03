@@ -4,7 +4,8 @@ from flask import Flask, render_template, request, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
-from forms import UserAddForm, LoginForm, MessageForm, UserEditForm
+from forms import (UserAddForm, LoginForm, MessageForm, UserEditForm,
+                   PasswordEditForm)
 from models import db, connect_db, User, Message
 
 CURR_USER_KEY = "curr_user"
@@ -323,6 +324,30 @@ def edit_profile():
         flash("Wrong password, please try again.", 'danger')
 
     return render_template('users/edit.html', form=form, user_id=g.user.id)
+
+
+@app.route('/users/profile/password', methods=["GET", "POST"])
+def edit_password():
+    """Update password for current user."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    form = PasswordEditForm()
+
+    if form.validate_on_submit():
+        if User.authenticate(g.user.username, form.curr_password.data):
+            curr_password = form.curr_password.data
+            new_password = form.new_password.data
+            User.change_password(g.user.username, curr_password, new_password)
+            flash("You successfully changed your password!")
+            return redirect(f"/users/{g.user.id}")
+
+        flash("Wrong password, please try again.", 'danger')
+
+    return render_template('users/change_pwd.html', form=form, user_id=g.user.id)
+
 
 @app.route('/users/delete', methods=["POST"])
 def delete_user():
