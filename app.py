@@ -252,8 +252,53 @@ def stop_following(follow_id):
     return redirect(f"/users/{g.user.id}/following")
 
 
+# @app.route('/users/profile', methods=["GET", "POST"])
+# def profile():
+#     """Update profile for current user."""
+
+#     if not g.user:
+#         flash("Access unauthorized.", "danger")
+#         return redirect("/")
+
+#     form = UserEditForm(obj=g.user)
+
+#     if form.validate_on_submit():
+
+#         username = form.username.data
+#         bio = form.bio.data
+#         email = form.email.data
+#         image_url = form.image_url.data or User.image_url.default.arg
+#         header_image_url = (form.header_image_url.data or
+#                             User.header_image_url.default.arg)
+#         password = form.password.data
+
+#         if g.user.authenticate(g.user.username, password):
+#             # only update username if unique and not current username
+#             if (unique_username(g.user, username)
+#                and g.user.username != username):
+#                 g.user.username = username
+
+#             # only update email if unique and not current username
+#             if unique_email(g.user, email) and g.user.email != email:
+#                 g.user.email = email
+
+#             g.user.bio = bio
+#             g.user.image_url = image_url
+#             g.user.header_image_url = header_image_url
+#             db.session.commit()
+
+#             return redirect(f'/users/{g.user.id}')
+
+#         else:
+#             flash("Your password is invalid", "danger")
+#             return render_template("/users/edit.html", form=form)
+
+#     return render_template('/users/edit.html', form=form)
+
+# Alternative to the above route - includes different method of handling existing username and/or email
+
 @app.route('/users/profile', methods=["GET", "POST"])
-def profile():
+def edit_profile():
     """Update profile for current user."""
 
     if not g.user:
@@ -263,71 +308,21 @@ def profile():
     form = UserEditForm(obj=g.user)
 
     if form.validate_on_submit():
+        if User.authenticate(g.user.username, form.static_password.data):
+            form.populate_obj(g.user)
 
-        username = form.username.data
-        bio = form.bio.data
-        email = form.email.data
-        image_url = form.image_url.data or User.image_url.default.arg
-        header_image_url = (form.header_image_url.data or
-                            User.header_image_url.default.arg)
-        password = form.password.data
+            try:
+                db.session.commit()
+                return redirect(f"/users/{g.user.id}")
+            except IntegrityError:
+                db.session.rollback()
+                flash("That username or email is already taken")
+                return render_template('users/edit.html', form=form,
+                                       user_id=g.user.id)
 
-        if g.user.authenticate(g.user.username, password):
-            # only update username if unique and not current username
-            if (unique_username(g.user, username)
-               and g.user.username != username):
-                g.user.username = username
+        flash("Wrong password, please try again.", 'danger')
 
-            # only update email if unique and not current username
-            if unique_email(g.user, email) and g.user.email != email:
-                g.user.email = email
-
-            g.user.bio = bio
-            g.user.image_url = image_url
-            g.user.header_image_url = header_image_url
-            db.session.commit()
-
-            return redirect(f'/users/{g.user.id}')
-
-        else:
-            flash("Your password is invalid", "danger")
-            return render_template("/users/edit.html", form=form)
-
-    return render_template('/users/edit.html', form=form)
-
-# Alternative to the above route - includes different method of handling existing username and/or email
-
-# @app.route('/users/profile', methods=["GET", "POST"])
-# def edit_profile():
-#     """Update profile for current user."""
-
-#     if not g.user:
-#         flash("Access unauthorized.", "danger")
-#         return redirect("/")
-
-#     user = g.user
-#     form = UserEditForm(obj=user)
-
-#     if form.validate_on_submit():
-#         if User.authenticate(user.username, form.password.data):
-#             user.username = form.username.data
-#             user.email = form.email.data
-#             user.image_url = form.image_url.data or "/static/images/default-pic.png"
-#             user.header_image_url = form.header_image_url.data or "/static/images/warbler-hero.jpg"
-#             user.bio = form.bio.data
-
-#             try:
-#                 db.session.commit()
-#                 return redirect(f"/users/{user.id}")
-#             except IntegrityError:
-#                 db.session.rollback()
-#                 flash("That username or email is already taken")
-#                 return render_template('users/edit.html', form=form,
-#                                        user_id=user.id)
-
-#         flash("Wrong password, please try again.", 'danger')
-
-#     return render_template('users/edit.html', form=form, user_id=user.id)
+    return render_template('users/edit.html', form=form, user_id=g.user.id)
 
 @app.route('/users/delete', methods=["POST"])
 def delete_user():

@@ -26,7 +26,10 @@ class LoginForm(FlaskForm):
 
 
 class UserEditForm(FlaskForm):
-    """Form for editing users."""
+    """Form for editing users. The static password field is for authentication
+    purpose ONLY in this user edit form. It's been given this name so there is
+    not a match with an actual attribute on the model, as it should not be
+    updated using this form."""
 
     username = StringField('Username', validators=[DataRequired()])
     email = StringField('E-mail', validators=[DataRequired(), Email()])
@@ -35,4 +38,4 @@ class UserEditForm(FlaskForm):
     header_image_url = StringField('(Optional) Header Image URL',
                                    validators=[Optional(), URL()])
     bio = StringField('(Optional) BIO', validators=[Optional()])
-    password = PasswordField('Password', validators=[Length(min=6)])
+    static_password = PasswordField('Password', validators=[Length(min=6)])
